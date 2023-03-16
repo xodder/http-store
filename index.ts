@@ -2,8 +2,6 @@ import { Request, Response } from "express";
 import { decrypt, encrypt } from "./utils/crypt";
 import omitBy from "./utils/omit-by";
 
-const HEADER_NAME = "X-Data";
-
 type StorageBlock = {
   key: string;
   value: any;
@@ -12,14 +10,21 @@ type StorageBlock = {
 
 type StorageBlockCollection = Record<string, StorageBlock>;
 
+type HttpBlockStorageConfig = {
+  headerName: string;
+  encryptionKey: string;
+};
+
 export class HttpBlockStorage {
   private req: Request;
   private res: Response;
+  private config: HttpBlockStorageConfig;
   private blocks: StorageBlockCollection;
 
-  constructor(req: Request, res: Response) {
+  constructor(req: Request, res: Response, config: HttpBlockStorageConfig) {
     this.req = req;
     this.res = res;
+    this.config = config;
     this.blocks = this.getActiveBlocks();
   }
 
@@ -31,11 +36,13 @@ export class HttpBlockStorage {
   }
 
   private extractTokenFromReq() {
-    return this.req.get(HEADER_NAME) || "";
+    return this.req.get(this.config.headerName) || "";
   }
 
   private transformTokenToBlocks(token?: string) {
-    return !token ? {} : (decrypt(token) as StorageBlockCollection);
+    return !token
+      ? {}
+      : (decrypt(token, this.config.encryptionKey) as StorageBlockCollection);
   }
 
   private isExpiredBlock(block: StorageBlock) {
@@ -81,16 +88,23 @@ export class HttpBlockStorage {
   }
 
   private flush() {
-    this.res.set(HEADER_NAME, this.transformBlocksToToken(this.blocks));
+    this.res.set(
+      this.config.headerName,
+      this.transformBlocksToToken(this.blocks)
+    );
   }
 
   private transformBlocksToToken(blocks: StorageBlockCollection) {
-    return encrypt(blocks);
+    return encrypt(blocks, this.config.encryptionKey);
   }
 }
 
-function makeHttpBlockStorage(req: Request, res: Response) {
-  return new HttpBlockStorage(req, res);
+function makeHttpBlockStorage(
+  req: Request,
+  res: Response,
+  config: HttpBlockStorageConfig
+) {
+  return new HttpBlockStorage(req, res, config);
 }
 
 export default makeHttpBlockStorage;
