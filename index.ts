@@ -1,13 +1,13 @@
 import { Request, Response } from "express";
-import omitBy from "lodash/omitBy";
 import { decrypt, encrypt } from "./utils/crypt";
+import omitBy from "./utils/omit-by";
 
 const HEADER_NAME = "X-Data";
 
 type StorageBlock = {
   key: string;
   value: any;
-  expires_at: number;
+  expiresAt: number;
 };
 
 type StorageBlockCollection = Record<string, StorageBlock>;
@@ -27,7 +27,7 @@ export class HttpBlockStorage {
     const token = this.extractTokenFromReq();
     const blocks = this.transformTokenToBlocks(token);
 
-    return omitBy(blocks, this.isExpiredBlock);
+    return omitBy(blocks, this.isExpiredBlock)!;
   }
 
   private extractTokenFromReq() {
@@ -39,7 +39,7 @@ export class HttpBlockStorage {
   }
 
   private isExpiredBlock(block: StorageBlock) {
-    return block.expires_at < Date.now();
+    return block.expiresAt < Date.now();
   }
 
   has(key: string) {
@@ -50,21 +50,21 @@ export class HttpBlockStorage {
     return this.blocks[key]?.value;
   }
 
-  get_age(key: string) {
+  getAge(key: string) {
     const block = this.blocks[key];
 
     if (!block) {
       return 0;
     }
 
-    return block.expires_at - Date.now();
+    return block.expiresAt - Date.now();
   }
 
   put(key: string, value: any, age: number) {
     this.blocks[key] = {
       key,
       value,
-      expires_at: Date.now() + age,
+      expiresAt: Date.now() + age,
     };
 
     this.flush();
@@ -89,8 +89,8 @@ export class HttpBlockStorage {
   }
 }
 
-function make_x_data(req: Request, res: Response) {
+function makeHttpBlockStorage(req: Request, res: Response) {
   return new HttpBlockStorage(req, res);
 }
 
-export default make_x_data;
+export default makeHttpBlockStorage;
