@@ -2,26 +2,26 @@ import { Request, Response, NextFunction } from "express";
 import { decrypt, encrypt } from "./utils/crypt";
 import omitBy from "./utils/omit-by";
 
-type StorageBlock = {
+type Block = {
   key: string;
   value: any;
   expiresAt: number;
 };
 
-type StorageBlockCollection = Record<string, StorageBlock>;
+type BlockCollection = Record<string, Block>;
 
-type HttpBlockStorageConfig = {
+type HttpStoreConfig = {
   headerName: string;
   encryptionKey: string;
 };
 
-export class HttpBlockStorage {
+export class HttpStore {
   private req: Request;
   private res: Response;
-  private config: HttpBlockStorageConfig;
-  private blocks: StorageBlockCollection;
+  private config: HttpStoreConfig;
+  private blocks: BlockCollection;
 
-  constructor(req: Request, res: Response, config: HttpBlockStorageConfig) {
+  constructor(req: Request, res: Response, config: HttpStoreConfig) {
     this.req = req;
     this.res = res;
     this.config = config;
@@ -42,10 +42,10 @@ export class HttpBlockStorage {
   private transformTokenToBlocks(token?: string) {
     return !token
       ? {}
-      : (decrypt(token, this.config.encryptionKey) as StorageBlockCollection);
+      : (decrypt(token, this.config.encryptionKey) as BlockCollection);
   }
 
-  private isExpiredBlock(block: StorageBlock) {
+  private isExpiredBlock(block: Block) {
     return block.expiresAt < Date.now();
   }
 
@@ -94,7 +94,7 @@ export class HttpBlockStorage {
     );
   }
 
-  private transformBlocksToToken(blocks: StorageBlockCollection) {
+  private transformBlocksToToken(blocks: BlockCollection) {
     return encrypt(blocks, this.config.encryptionKey);
   }
 }
@@ -102,14 +102,14 @@ export class HttpBlockStorage {
 declare global {
   namespace Express {
     interface Request {
-      store: HttpBlockStorage;
+      store: HttpStore;
     }
   }
 }
 
-function store(config: HttpBlockStorageConfig) {
+function store(config: HttpStoreConfig) {
   return (req: Request, res: Response, next: NextFunction) => {
-    req.store = new HttpBlockStorage(req, res, config);
+    req.store = new HttpStore(req, res, config);
     next();
   };
 }
