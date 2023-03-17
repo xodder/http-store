@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { Request, Response, NextFunction } from "express";
 import { decrypt, encrypt } from "./utils/crypt";
 import omitBy from "./utils/omit-by";
 
@@ -99,12 +99,19 @@ export class HttpBlockStorage {
   }
 }
 
-function makeHttpBlockStorage(
-  req: Request,
-  res: Response,
-  config: HttpBlockStorageConfig
-) {
-  return new HttpBlockStorage(req, res, config);
+declare global {
+  namespace Express {
+    interface Request {
+      store: HttpBlockStorage;
+    }
+  }
 }
 
-export default makeHttpBlockStorage;
+function store(config: HttpBlockStorageConfig) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    req.store = new HttpBlockStorage(req, res, config);
+    next();
+  };
+}
+
+export default store;
