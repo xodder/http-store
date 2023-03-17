@@ -1,6 +1,6 @@
-import { Request, Response, NextFunction } from "express";
-import { decrypt, encrypt } from "./utils/crypt";
-import omitBy from "./utils/omit-by";
+import { Request, Response, NextFunction } from 'express';
+import { decrypt, encrypt } from './utils/crypt';
+import omitBy from './utils/omit-by';
 
 type Block = {
   key: string;
@@ -32,11 +32,11 @@ export class HttpStore {
     const token = this.extractTokenFromReq();
     const blocks = this.transformTokenToBlocks(token);
 
-    return omitBy(blocks, this.isExpiredBlock)!;
+    return omitBy(blocks, this.isExpiredBlock.bind(this))!;
   }
 
   private extractTokenFromReq() {
-    return this.req.get(this.config.headerName) || "";
+    return this.req.get(this.config.headerName) || '';
   }
 
   private transformTokenToBlocks(token?: string) {
@@ -99,11 +99,9 @@ export class HttpStore {
   }
 }
 
-declare global {
-  namespace Express {
-    interface Request {
-      store: HttpStore;
-    }
+declare module 'express' {
+  interface Request {
+    store: HttpStore;
   }
 }
 
